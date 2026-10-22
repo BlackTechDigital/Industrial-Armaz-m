@@ -1,0 +1,33 @@
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const opening=$('#opening');const finishOpening=()=>opening.classList.add('finished');
+window.addEventListener('load',()=>setTimeout(finishOpening,reduced?0:1250),{once:true});setTimeout(finishOpening,3000);
+const menu=$('#menuPanel'),trigger=$('#menuTrigger');let priorFocus=null;
+function setMenu(open){if(open)priorFocus=document.activeElement;menu.classList.toggle('open',open);menu.setAttribute('aria-hidden',String(!open));trigger.setAttribute('aria-expanded',String(open));document.body.style.overflow=open?'hidden':'';if(open)$('#menuClose').focus();else if(priorFocus)priorFocus.focus();}
+trigger.addEventListener('click',()=>setMenu(!menu.classList.contains('open')));$('#menuClose').addEventListener('click',()=>setMenu(false));$$('#menuPanel nav a').forEach(a=>a.addEventListener('click',()=>setMenu(false)));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menu.classList.contains('open'))setMenu(false);if(e.key==='Tab'&&menu.classList.contains('open')){const f=[$('#menuClose'),...$$('#menuPanel nav a')];const idx=f.indexOf(document.activeElement);if(e.shiftKey&&idx===0){e.preventDefault();f.at(-1).focus()}else if(!e.shiftKey&&idx===f.length-1){e.preventDefault();f[0].focus()}}});
+let ticking=false;window.addEventListener('scroll',()=>{if(ticking)return;ticking=true;requestAnimationFrame(()=>{const max=document.documentElement.scrollHeight-innerHeight;$('#meter').style.width=(max?Math.min(100,scrollY/max*100):0)+'%';$('#header').classList.toggle('scrolled',scrollY>95);ticking=false})},{passive:true});
+if('IntersectionObserver'in window&&!reduced){const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.08,rootMargin:'0px 0px -30px 0px'});$$('.statement-copy h2,.statement-sub,.portfolio-header h2,.work,.materials-top h2,.material-display,.blueprint h2,.process-heading h2,.step,.contact-panel h2').forEach(el=>{el.classList.add('js-reveal');observer.observe(el)})}
+$$('.filter').forEach(button=>button.addEventListener('click',()=>{$$('.filter').forEach(b=>{const active=b===button;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});$$('.work').forEach(work=>work.classList.toggle('is-hidden',button.dataset.filter!=='all'&&work.dataset.category!==button.dataset.filter))}));
+const materials={steel:{label:'MATÉRIA 01 / AÇO & METAL',description:'Linhas precisas, presença estrutural e uma estética que atravessa tendências.',image:'https://images.unsplash.com/photo-1538688423619-a81d3f23454b?auto=format&fit=crop&w=1600&q=85'},wood:{label:'MATÉRIA 02 / MADEIRA',description:'Veios, textura e calor natural: cada superfície oferece uma linguagem visual própria.',image:'https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=1600&q=85'},design:{label:'MATÉRIA 03 / DESIGN',description:'A combinação de proporções, materiais e funcionalidade cria ambientes com personalidade.',image:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1600&q=85'}};
+$$('.material-tab').forEach(button=>button.addEventListener('click',()=>{const m=materials[button.dataset.material];$$('.material-tab').forEach(b=>{b.classList.toggle('selected',b===button);b.setAttribute('aria-pressed',String(b===button))});$('#materialImage').style.backgroundImage=`url("${m.image}")`;$('#materialLabel').textContent=m.label;$('#materialDescription').textContent=m.description}));
+const dialog=$('#workDialog');let selected='';$$('.work-hit').forEach(button=>button.addEventListener('click',()=>{const card=button.closest('.work');selected=card.dataset.name;$('#dialogTitle').textContent=selected;$('#dialogIndex').textContent=`ESTUDO / ${card.dataset.id}`;$('#dialogImage').style.backgroundImage=getComputedStyle(card.querySelector('.work-image')).backgroundImage;dialog.showModal()}));$('#dialogClose').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});$('#dialogCTA').addEventListener('click',()=>{dialog.close();$('#orcamento').scrollIntoView({behavior:reduced?'instant':'smooth'});const ta=$('#quoteForm textarea');ta.value=`Tenho interesse em algo inspirado em: ${selected}. Gostaria de conversar sobre possibilidades.`;ta.focus({preventScroll:true})});
+$('#quoteForm').addEventListener('submit',e=>{e.preventDefault();const form=e.currentTarget;if(!form.reportValidity())return;const data=new FormData(form);const name=String(data.get('nome')).trim(),contact=String(data.get('contato')).trim(),room=String(data.get('ambiente')),message=String(data.get('mensagem')).trim();if(!name||!contact||!message)return;const body=`Olá! Gostaria de conversar sobre um projeto com a Industrial Armazém.\n\nNome: ${name}\nContato: ${contact}\nAmbiente: ${room}\nIdeia: ${message}\n\nMensagem preparada no site demonstrativo da Black Tech.`;$('#formStatus').textContent='Abrindo o WhatsApp com a mensagem preparada. O envio só acontece após sua confirmação no aplicativo.';const url='https://wa.me/5535988657426?text='+encodeURIComponent(body);window.location.assign(url)});
+
+// Wood Signature — motion details, mindful of reduced motion and touch input.
+if(!reduced){
+ const cursor=$('#woodCursor');
+ if(window.matchMedia('(hover: hover) and (pointer: fine)').matches){
+  window.addEventListener('pointermove',e=>{cursor.style.left=e.clientX+'px';cursor.style.top=e.clientY+'px'},{passive:true});
+  $$('.work-hit').forEach(el=>{el.addEventListener('pointerenter',()=>cursor.classList.add('active'));el.addEventListener('pointerleave',()=>cursor.classList.remove('active'));el.addEventListener('click',()=>cursor.classList.remove('active'))});
+ }
+ const motionEls=$$('.hero-media,.statement-aside .cross,.blueprint-icon');
+ let motionQueued=false;
+ window.addEventListener('scroll',()=>{if(motionQueued)return;motionQueued=true;requestAnimationFrame(()=>{
+  const vh=innerHeight;
+  motionEls.forEach((el,i)=>{const r=el.getBoundingClientRect();if(r.bottom>0&&r.top<vh){const t=(vh-r.top)/(vh+r.height);el.style.setProperty('--motion-shift',((t-.5)*(i===0?16:24)).toFixed(2)+'px')}});
+  motionQueued=false;
+ })},{passive:true});
+}
+// Update material imagery with a subtle crossfade rather than a hard swap.
+$$('.material-tab').forEach(el=>el.addEventListener('click',()=>{const image=$('#materialImage');image.animate([{opacity:.65,transform:'scale(1.04)'},{opacity:1,transform:'scale(1)'}],{duration:650,easing:'cubic-bezier(.16,1,.3,1)'})}));
